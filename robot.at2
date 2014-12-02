@@ -1,0 +1,132 @@
+; Author: Wes Cossick, Daniel Holt
+; Filename: 
+; Description: Kills a robot moving in circles
+; Due: 11/12/14
+
+
+; Set point values
+#config shield=0
+#config mines=0
+#config engine=2
+#config heatsinks=3
+#config scanner=2
+#config weapon=3
+#config armor=2
+
+#def throttle
+
+	mov throttle, 100
+        mov     ax,     1
+        int     3               ; Keepshift on.
+!begin
+        mov     dx,     64      ; Set our scan arc to 64 degrees
+
+!start
+	ipo	1,	fx
+	cmp 	fx, 	0
+	jne	111
+	opo	14, 	20
+:111
+        opo     11,     throttle; Throttle to 100%
+        opo     17,     dx      ; Set arc to DX
+        ipo     7,      fx      ; Scan for enemy
+        cmp     fx      2000
+        ja      !decide         ; No one found? Decide what to do
+
+
+!track
+        ; Someone was found
+        mov     bx,     dx      ; BX = DX (dx is the scan width)
+
+        mov     ax,     @3      ; bx = scanwidth*accuracy
+        add     ax      1002    ;   This is achieved by calling
+        je      ax              ;   a routine chosen by the accuracy
+        jne     ax              ;   number, rather than actually do
+:1005                           ;   a multiplication, which is slow.
+
+        sar     bx,     1       ; bx = scanwidth*accuracy/2
+        opo     12,     bx      ; turn turret by that amount.
+
+        cmp     dx,     2       ; check scanwidth
+        jbe     !fire           ; width<=2? then fire, otherwise tighten
+        shr     dx,     1       ; tighten scanwidth
+
+!fire
+	; Prevent overheatingatr2 
+	ipo		P_HEAT, ax
+	cmp		ax, 300
+	ja		!dontfire
+	
+	; Spray and pray baby!	
+	mov ax, @3
+	mov fx, ax
+	shl fx, 1
+	cmp fx, 4
+	jge 11
+	opo		P_OVERBURN	1
+:11
+	opo		P_WEAPON	ax
+	opo		P_OVERBURN	0
+
+!dontfire
+
+        ; Set course towards target
+        mov     bx,     @1      ; get current desired heading
+                                ; (not actual heading)
+        ipo     3,      ax      ; Get actual heading
+        add     ax,     @2      ; And add to it our turret offset
+                                ; AX is now our new desired heading.
+
+        cmp     fx      200     ; Check our distance
+        jae     !backup           ; Too close? If not, then steer straight
+        add     ax,     40      ; if so, veer off
+	jne !start
+	je !start
+!backup
+	mov throttle, -75
+	je !start
+	jne !start
+
+;Decides what to do if no one found
+!decide
+        cmp     dx      64      ; Compare scanwidth to 64
+        jae     !flip           ; If above, then flip
+        shl     dx      1       ; otherwise, widen arc
+	mov	throttle, 100
+        je      !start          ; start over
+        jne     !start
+!flip
+        opo     12      128     ; rotate turret 128 degrees (180).
+        ;opo     14      8       ; Turn slightly
+        je      !start          ; start over
+        jne     !start
+
+
+; Hardcoded aiming solutions
+:1000
+        shl     bx,     1       
+        mov     ax,     0
+        sub     ax,     bx
+        mov     bx,     ax      ; BX = 0-(BX*2)
+        jne     1005
+        je      1005
+:1001
+        mov     ax,     0
+        sub     ax,     bx
+        mov     bx,     ax      ; BX = 0-BX
+        jne     1005
+        je      1005
+:1002
+        mov     bx,     0       ; BX = 0
+        jne     1005
+        je      1005
+:1003
+        ; BX doesn't change
+        jne     1005
+        je      1005
+:1004
+        shl     bx,     1       ; BX = BX*2
+        jne     1005
+        je      1005
+
+
