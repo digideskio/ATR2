@@ -1,0 +1,83 @@
+; Author: Wes Cossick
+; Filename: cossr4.at2
+; Description: Kills a robot moving in circles
+; Due: 11/12/14
+
+
+; Set point values
+#config shield=0
+#config mines=0
+#config engine=0
+#config heatsinks=4
+#config scanner=3
+#config weapon=4
+#config armor=1
+
+
+:1
+	; Settings speed=0, scan-arc width=3, turn-speed=+6
+	opo		P_THROTTLE	0
+	opo		P_SCANARC	6
+
+
+:2
+	; Turn
+	opo		P_TROTATE	10
+
+	; Scan
+	ipo		P_SCAN		ax
+	cmp		ax			1500
+	jgr		2
+	
+	ipo     P_ACCURACY	bx
+
+:3
+	; Follow
+	ipo		P_SCAN		ax
+	cmp		ax			1500
+	jgr		2
+	ipo     P_ACCURACY	bx
+	cmp		bx			0
+	je		4
+	opo		P_TROTATE	bx
+	jmp		3
+	
+:4
+	; Double check
+	nop
+	nop
+	ipo		P_SCAN		ax
+	cmp		ax			1500
+	jgr		2
+	ipo     P_ACCURACY	bx
+	cmp		bx			0
+	je		1000
+	opo		P_TROTATE	bx
+	jmp		3
+
+:1000
+	; Prevent overheating
+	ipo		P_HEAT, ax
+	cmp		ax, 100
+	ja		3
+	
+	; Spray and pray baby!
+	opo		P_WEAPON	2
+	opo		P_WEAPON	-2
+	opo		P_WEAPON	1
+	opo		P_WEAPON	-1
+	opo		P_WEAPON	0
+	opo		P_WEAPON	0
+	opo		P_WEAPON	1
+	opo		P_WEAPON	-1
+	
+	; Back to spinning
+	; Scan
+	ipo		P_SCAN		ax
+	cmp		ax			1500
+	jgr		2
+	
+	ipo     P_ACCURACY	bx
+	jmp		3
+
+ret
